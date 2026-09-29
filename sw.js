@@ -1,9 +1,9 @@
-const CACHE = 'at-farm-pwa-v10-42';
+const CACHE = 'at-farm-pwa-v10-49';
 const STATIC = [
-  './config.js?v=10.42',
-  './manifest.webmanifest?v=10.42',
-  './icon-192.png',
-  './icon-512.png'
+  './config.js?v=10.49',
+  './manifest.webmanifest?v=10.49',
+  './icon-192.png?v=10.49',
+  './icon-512.png?v=10.49'
 ];
 
 self.addEventListener('install', event => {
@@ -24,7 +24,6 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Navigasi/index selalu network-first agar wrapper lama tidak menetap.
   if (event.request.mode === 'navigate' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('/at-farm-pwa/')) {
     event.respondWith(
       fetch(event.request, {cache:'no-store'})
@@ -33,7 +32,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Asset statis: network-first, cache sebagai cadangan.
   event.respondWith(
     fetch(event.request, {cache:'no-store'}).then(response => {
       if (response && response.ok) {
