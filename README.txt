@@ -1,6 +1,6 @@
-AT FARM PWA V10.41
-
-Perubahan:
-- Header pembungkus "AT FARM — PWA" dihapus agar aplikasi memakai layar penuh.
-- Semua fitur aplikasi Google Apps Script tetap dipertahankan.
-- Cache Service Worker dinaikkan ke V10.41 agar pembaruan langsung diterapkan.
+AT FARM PWA V10.42
+- Header wrapper AT FARM — PWA dihapus total dari index.html.
+- Iframe aplikasi memenuhi 100% viewport dari posisi paling atas.
+- Navigasi/index menggunakan network-first agar cache wrapper lama tidak dipakai.
+- Service Worker cache: at-farm-pwa-v10-42.
+- URL Apps Script tetap menggunakan config.js yang sama.

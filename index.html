@@ -1,1 +1,52 @@
-<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#176b3a"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="AT FARM"><title>AT FARM</title><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon-192.png"><link rel="apple-touch-icon" href="./icon-192.png"><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;font-family:Arial,sans-serif;background:#f4f7f5;color:#173b28}#app{height:100%;width:100%}#mount{height:100%;width:100%;min-height:0}iframe{width:100%;height:100%;border:0;background:#fff}.setup{max-width:620px;margin:30px auto;padding:18px}.card{background:#fff;border-radius:16px;padding:22px;box-shadow:0 4px 18px #0001}.card h1{margin-top:0;color:#176b3a}.code{padding:12px;border-radius:10px;background:#eef5f0;word-break:break-all}.small{font-size:13px;color:#607067;line-height:1.55}</style></head><body><div id="app"><div id="mount"></div></div><script src="./config.js"></script><script>(function(){const m=document.getElementById('mount'),u=window.AT_FARM_WEB_APP_URL||'';if(!u||u.includes('PASTE_URL')){m.innerHTML='<div class="setup"><div class="card"><h1>AT FARM PWA</h1><p>URL Web App belum diatur.</p></div></div>';}else{const f=document.createElement('iframe');f.src=u;f.title='AT FARM';f.allow='clipboard-read; clipboard-write';m.appendChild(f)}if('serviceWorker'in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(console.error))}})();</script></body></html>
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#176b3a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="AT FARM">
+  <title>AT FARM</title>
+  <link rel="manifest" href="./manifest.webmanifest?v=10.42">
+  <link rel="icon" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0!important;padding:0!important;width:100%;height:100%;overflow:hidden;background:#fff}
+    #atfarm-root{position:fixed;inset:0;width:100vw;height:100dvh;margin:0;padding:0;overflow:hidden;background:#fff}
+    #atfarm-frame{display:block;width:100%;height:100%;margin:0;padding:0;border:0;background:#fff}
+    .setup{font-family:Arial,sans-serif;padding:24px;color:#173b28}
+  </style>
+</head>
+<body>
+  <main id="atfarm-root"></main>
+  <script src="./config.js?v=10.42"></script>
+  <script>
+  (() => {
+    const root = document.getElementById('atfarm-root');
+    const url = window.AT_FARM_WEB_APP_URL || '';
+    if (!url) {
+      root.innerHTML = '<div class="setup"><h2>AT FARM</h2><p>URL Web App belum diatur.</p></div>';
+      return;
+    }
+    const frame = document.createElement('iframe');
+    frame.id = 'atfarm-frame';
+    frame.src = url;
+    frame.title = 'AT FARM';
+    frame.allow = 'clipboard-read; clipboard-write';
+    root.replaceChildren(frame);
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          const reg = await navigator.serviceWorker.register('./sw.js?v=10.42', {scope:'./', updateViaCache:'none'});
+          await reg.update();
+        } catch (err) { console.error(err); }
+      });
+    }
+  })();
+  </script>
+</body>
+</html>
