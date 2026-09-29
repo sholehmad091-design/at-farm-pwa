@@ -1,20 +1,23 @@
-AT FARM PWA V10.49 - LOGO BARU
+AT FARM PWA V10.50 - LOGO LOGIN + ICON MOBILE
 
-Deployment Apps Script:
-https://script.google.com/macros/s/AKfycbw441T84NOAgu6y035Oiqj3z_3qX3-T3SDaAZDpg5kGsKNv59_OoGiSR3_yJd45uNUlJw/exec
+PERUBAHAN:
+1. Ikon aplikasi PWA di layar utama HP menggunakan LOGO AT baru.
+2. Logo baru dibuat dengan safe-area supaya tidak terpotong Android.
+3. Logo dashboard/menu lain TIDAK diubah.
+4. Disertakan file Index_APPS_SCRIPT_LOGIN_LOGO_BARU.html untuk mengganti Index.html
+   di Google Apps Script agar gambar sayur pada halaman LOGIN berubah menjadi LOGO AT baru.
 
-Perubahan:
-- Logo aplikasi diganti dengan logo bulat emas-hitam AT dari pengguna.
-- icon-192.png dan icon-512.png diperbarui.
-- Versi cache/PWA dinaikkan ke V10.49.
-- Tetap mode standalone untuk pemasangan di layar utama HP.
-- Tetap memakai deployment Apps Script terbaru.
+CARA PWA:
+- Ganti isi folder repository at-farm-pwa dengan file PWA dari paket ini.
+- Commit lalu Push origin di GitHub Desktop.
+- Tunggu GitHub Pages memperbarui versi.
 
-Cara update:
-1. Ekstrak ZIP.
-2. Copy/replace semua file ke repository GitHub Desktop at-farm-pwa.
-3. Commit: AT FARM PWA V10.49 LOGO BARU
-4. Push origin.
-5. Tunggu GitHub Pages selesai deploy.
-6. Di HP, hapus instalasi/shortcut AT FARM lama bila ikon lama masih tersimpan.
-7. Buka kembali GitHub Pages di Chrome lalu pilih Instal aplikasi / Tambahkan ke layar utama.
+CARA LOGIN:
+- Di Google Apps Script, backup Index.html lama.
+- Gunakan isi Index_APPS_SCRIPT_LOGIN_LOGO_BARU.html sebagai Index.html.
+- Deploy / Kelola penerapan -> buat versi baru / perbarui penerapan.
+- Fungsi dashboard dan logo lain tidak sengaja diubah; hanya elemen logo login pada file dasar ini.
+
+CATATAN:
+Jika aplikasi HP masih menampilkan ikon lama, hapus shortcut/PWA lama lalu pasang kembali
+setelah GitHub Pages selesai memperbarui cache.
