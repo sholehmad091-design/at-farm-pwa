@@ -1,4 +1,4 @@
-/* AT FARM PWA V10.82 - logo login & icon baru */
+/* AT FARM PWA V10.83 - logo login & icon baru */
 const CACHE = 'at-farm-pwa-V10_82';
 const STATIC = [
   './config.js?v=V10_82',
