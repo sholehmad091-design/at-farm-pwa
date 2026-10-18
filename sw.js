@@ -1,10 +1,10 @@
 /* AT FARM PWA V10.92 BLUE - logo login & icon baru */
-const CACHE = 'at-farm-pwa-V10_92 BLUE';
+const CACHE = 'at-farm-pwa-V11_05_NEW_PC';
 const STATIC = [
-  './config.js?v=V10_92 BLUE',
-  './manifest.webmanifest?v=V10_92 BLUE',
-  './icon-192.png?v=V10_92 BLUE',
-  './icon-512.png?v=V10_92 BLUE'
+  './config.js?v=11.05',
+  './manifest.webmanifest?v=11.05',
+  './icon-192.png?v=11.05',
+  './icon-512.png?v=11.05'
 ];
 
 self.addEventListener('install', event => {
