@@ -1,0 +1,1 @@
+V11.01: Form filter dan kartu ringkasan REKAP KEUANGAN dibuat 2 kolom di HP. Filter lokasi tetap lebar penuh, dua tanggal berdampingan, tombol Filter dan Reset berdampingan. Backend, data, login, navigasi, dan rekap lainnya tidak diubah.

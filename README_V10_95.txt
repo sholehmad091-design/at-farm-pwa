@@ -1,0 +1,1 @@
+PASAR AT FARM V10.95 - Bottom Navigation INPUT | DATA | REKAP\nNavigasi sidebar dipindah ke bawah. Menu dikelompokkan sesuai permintaan. Backend Code.gs tidak diubah.\nGunakan Index.html terbaru di Apps Script, lalu deploy New Version. Hak akses ADMIN/KASIR tetap berlaku.\n

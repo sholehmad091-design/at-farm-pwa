@@ -1,0 +1,1 @@
+V10.99: Tombol kembali bawaan HP/browser. Tombol kembali dalam aplikasi dihapus. History API: saat membuka menu pushState, saat Back popstate kembali ke dashboard. Bottom navigation dan backend tidak diubah. Catatan: Back fisik harus diteruskan oleh WebView Android ke riwayat WebView; dalam Chrome tombol back browser normal.

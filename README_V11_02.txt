@@ -1,0 +1,1 @@
+PASAR AT FARM V11.02 - seluruh menu compact 2 kolom di HP.\nForm, filter, tombol, kartu ringkasan pada semua dashboard disusun dua kolom.\nTabel tetap scroll horizontal. Code.gs tidak diubah.\nGanti Index.html dan deploy versi baru. Uji setiap menu di HP.\n
