@@ -414,6 +414,27 @@ hr{border-color:#2c3e5b!important}
 .figma-bottom-nav .figma-tab>span:last-child{font-size:9px!important;font-weight:800!important;line-height:1.15!important;max-width:100%!important;white-space:nowrap!important}
 @media(max-width:360px){.figma-bottom-nav .figma-tab .figma-tab-icon{width:37px!important;height:37px!important;font-size:17px!important}.figma-bottom-nav .figma-tab>span:last-child{font-size:8px!important}}
 @media(prefers-reduced-motion:reduce){.figma-bottom-nav .figma-tab,.figma-bottom-nav .figma-tab-icon{transition:none!important}}
+
+/* V11.06: cetak hanya laporan aktif, bukan navigasi/dashboard */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body.at-print-report { background:#fff!important; padding:0!important; margin:0!important; }
+  body.at-print-report .login-screen { display:none!important; }
+  body.at-print-report .wrap { padding:0!important; margin:0!important; max-width:none!important; width:100%!important; display:block!important; }
+  body.at-print-report .wrap > :not(.print-area) { display:none!important; }
+  body.at-print-report .wrap > .print-area { display:none!important; }
+  body.at-print-report .wrap > .print-area.at-active-print { display:block!important; position:static!important; width:100%!important; }
+  body.at-print-report .print-only { display:block!important; }
+  body.at-print-report .print-area table { border-collapse:collapse!important; width:100%!important; font-size:9px!important; }
+  body.at-print-report .print-area th, body.at-print-report .print-area td { border:1px solid #777!important; padding:4px!important; color:#111!important; background:#fff!important; }
+  body.at-print-report .print-area thead { display:table-header-group; }
+  body.at-print-report .print-area tfoot { display:table-row-group; }
+  body.at-print-report .print-area tr { break-inside:avoid; page-break-inside:avoid; }
+  body.at-print-report .print-area .at-grand-total td { font-weight:800!important; background:#edf2f6!important; border-top:2px solid #111!important; }
+  body.at-print-report .print-sign { break-inside:avoid; page-break-inside:avoid; }
+}
+.at-grand-total td { font-weight:800; background:#edf2f6; border-top:2px solid #111; }
+
 </style>
 </head>
 <body>
@@ -1323,9 +1344,9 @@ hr{border-color:#2c3e5b!important}
     const total=rows.reduce((a,r)=>a+(Number(r.nominal)||0),0);
     const area=document.getElementById('printExpenseDataArea');
     area.innerHTML=`<div class="print-only"><div class="print-title">LAPORAN DATA PENGELUARAN PASAR AT FARM</div><div class="print-meta"><b>Periode:</b> ${escapeHtml(period)} &nbsp; | &nbsp; <b>Dicetak:</b> ${escapeHtml(printNow())}</div><div class="print-summary"><b>Total Pengeluaran: ${money(total)}</b> &nbsp; | &nbsp; <b>Jumlah Transaksi: ${rows.length}</b></div><table><thead><tr><th>No</th><th>Tanggal</th><th>Keterangan / Keperluan</th><th>Nominal</th><th>Catatan</th><th>Waktu Input</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.tanggal||'')}</td><td>${escapeHtml(r.keterangan||'')}</td><td>${money(r.nominal||0)}</td><td>${escapeHtml(r.catatan||'')}</td><td>${escapeHtml(r.waktuInput||'')}</td></tr>`).join('')}</tbody></table></div>`;
+    atPreparePrintTotals(area);
     if(window.__atJpgExportMode)return renderReportToJpg(area,window.__atJpgExportName);
-    window.print();
-    setTimeout(()=>{area.innerHTML='';},500);
+    atStartPrint(area);
   }
 
   function openProductModal(){
@@ -1954,6 +1975,35 @@ function printTotalKeuangan(){
   }
 
 
+
+  // V11.06: hitung baris total dari nilai yang benar-benar tampil dalam tabel laporan.
+  function atPreparePrintTotals(area){
+    const table=area.querySelector('table');if(!table)return;
+    const old=table.querySelector('tfoot.at-totals-foot');if(old)old.remove();
+    const headers=[...table.querySelectorAll('thead th')].map(x=>x.textContent.trim().toLowerCase());
+    const bodyRows=[...table.querySelectorAll('tbody tr')];
+    const num=s=>{let t=String(s||'').replace(/[^0-9,.-]/g,'');if(!t)return 0;
+      if(t.includes(','))t=t.replace(/\./g,'').replace(',','.');else t=t.replace(/\./g,'');return Number(t)||0;};
+    const moneyCols=headers.map((h,i)=>/harga beli|harga jual|total penjualan|total laba|\blaba\b|\bnominal\b|uang masuk|uang keluar|pengeluaran|\bsaldo\b/.test(h)?i:-1).filter(i=>i>=0);
+    // Tabel ringkasan memakai "Total Penjualan" dan "Total Laba"; hindari menjumlahkan saldo berjalan.
+    const totals=moneyCols.map(i=>({i,value:headers[i].includes('saldo')?num(bodyRows.length?bodyRows[bodyRows.length-1].children[i]?.textContent:'0'):bodyRows.reduce((a,tr)=>a+num(tr.children[i]?.textContent),0)}));
+    const tr=document.createElement('tr');tr.className='at-grand-total';
+    headers.forEach((h,i)=>{const td=document.createElement('td');
+      if(i===0)td.textContent='TOTAL KESELURUHAN';
+      const v=totals.find(x=>x.i===i);if(v)td.textContent=money(v.value);
+      tr.appendChild(td);});
+    // Pada laporan tanpa kolom uang (tidak diharapkan), tetap sediakan ringkasan.
+    if(!totals.length){tr.lastElementChild.textContent='Total: '+bodyRows.length+' baris';}
+    const foot=document.createElement('tfoot');foot.className='at-totals-foot';foot.appendChild(tr);table.appendChild(foot);
+  }
+  function atStartPrint(area){
+    document.querySelectorAll('.print-area').forEach(x=>{x.classList.remove('at-active-print');x.style.display='none';});
+    area.classList.add('at-active-print');area.style.display='block';
+    document.body.classList.add('at-print-report');
+    const clean=()=>{document.body.classList.remove('at-print-report');area.classList.remove('at-active-print');area.style.display='none';window.removeEventListener('afterprint',clean);};
+    window.addEventListener('afterprint',clean);
+    setTimeout(()=>window.print(),120);
+  }
   function exportPrintJpg(kind){
     const jobs={recent:['DATA_TERBARU',printRecent],report:['REKAP_LAPORAN',printReport],outside:['REKAP_KASIR',printOutsideReport],expenseData:['DATA_PENGELUARAN',printExpenseData],total:['TOTAL_KEUANGAN',printTotalKeuangan]};
     const job=jobs[kind];if(!job)return;
@@ -1964,7 +2014,7 @@ function printTotalKeuangan(){
     const root=area.querySelector('.print-only')||area,table=root.querySelector('table');
     if(!table)throw Error('Tabel laporan belum ada.');
     const heads=[...table.querySelectorAll('thead th')].map(x=>x.textContent.trim());
-    const rows=[...table.querySelectorAll('tbody tr')].map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent.trim()));
+    const rows=[...table.querySelectorAll('tbody tr, tfoot tr')].map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent.trim()));
     if(!rows.length)throw Error('Tidak ada data untuk diekspor.');
     const title=[...root.querySelectorAll('.print-title,.print-meta,.print-summary')].map(x=>x.textContent.trim()).filter(Boolean);
     const W=Math.max(1200,heads.length*155),H=1700,pad=30;
@@ -1986,13 +2036,9 @@ function printTotalKeuangan(){
     }while(index<rows.length);
   }
   function printElement(area){
+    atPreparePrintTotals(area);
     if(window.__atJpgExportMode)return renderReportToJpg(area,window.__atJpgExportName);
-    document.querySelectorAll('.print-area').forEach(x=>x.style.display='none');
-    area.style.display='block';
-    setTimeout(()=>{
-      window.print();
-      setTimeout(()=>area.style.display='none',500);
-    },100);
+    atStartPrint(area);
   }
 
   function formatPeriod(start,end){

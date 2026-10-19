@@ -16,3 +16,12 @@ Folder ini siap dijadikan repository GitHub **at-farm-pwa** di PC baru.
 7. Refresh paksa PWA / hapus cache aplikasi jika tampilan lama masih tersimpan.
 
 **Penting:** GitHub Pages hanya membungkus aplikasi Apps Script melalui iframe; mengubah GitHub saja tidak menambah tombol Export JPG di halaman Apps Script.
+
+
+## V11.06 - Print Bersih + Total Keseluruhan
+- Navigasi/dashboard tidak tercetak pada PDF laporan.
+- Baris TOTAL KESELURUHAN di bagian akhir tabel pada semua fungsi cetak laporan.
+- Uang Masuk/Uang Keluar dijumlahkan; Saldo menampilkan saldo terakhir, bukan penjumlahan saldo berjalan.
+- Export JPG laporan menyertakan baris total.
+- Pasang `APPS_SCRIPT/Index.html` pada Google Apps Script, simpan, lalu Deploy > Manage deployments > Edit > New version.
+- `Code.gs` dan berkas PWA lain tetap sama.
