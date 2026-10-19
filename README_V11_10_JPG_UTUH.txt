@@ -1,0 +1,1 @@
+V11.10: Hanya fungsi renderReportToJpg di APPS_SCRIPT/Index.html yang diubah. JPG tinggi dinamis sesuai isi tabel, tidak dipotong per halaman A4. Jika melampaui batas kanvas browser, dibagi hanya pada batas aman. Print/PDF dan fitur lain tidak diubah.
