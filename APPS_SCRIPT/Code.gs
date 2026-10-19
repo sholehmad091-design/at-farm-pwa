@@ -82,7 +82,7 @@ function getInitialData() {
 function getTransactionSheetNames_() {
   return getSpreadsheet_().getSheets()
     .map(s => s.getName())
-    .filter(name => name !== CONFIG.MASTER_SHEET && name !== CONFIG.INVENTORY_SHEET && name !== CONFIG.CASHIER_MASTER_SHEET && name !== CONFIG.CASHIER_TX_SHEET && name !== 'MEMBER' && name !== CONFIG.USERS_SHEET && name !== CONFIG.EXPENSE_SHEET && name !== 'REKAP_KEUANGAN' && name !== 'UANG_MASUK');
+    .filter(name => name !== CONFIG.MASTER_SHEET && name !== CONFIG.INVENTORY_SHEET && name !== CONFIG.CASHIER_MASTER_SHEET && name !== CONFIG.CASHIER_TX_SHEET && name !== 'MEMBER' && name !== CONFIG.USERS_SHEET && name !== CONFIG.EXPENSE_SHEET && name !== 'REKAP_KEUANGAN' && name !== 'UANG_MASUK' && name !== AT_SESSION_SHEET_V1111);
 }
 
 function getOrCreateDataSheet_() {
@@ -499,6 +499,50 @@ function buildSummary_(sheetName, startDate, endDate, allowedSheets) {
   };
 }
 
+// V11.11: metadata terpisah. Tidak mengubah transaksi atau baris historis.
+// Satu pemanggilan simpan = satu sesi; ID sesi yang sama boleh dipakai bila
+// kelak sebuah proses simpan mengirim beberapa baris sekaligus.
+const AT_SESSION_SHEET_V1111 = 'AT_SESI_KEUANGAN';
+function atSessionSheetV1111_() {
+  const ss = getSpreadsheet_();
+  let sh = ss.getSheetByName(AT_SESSION_SHEET_V1111);
+  if (!sh) {
+    sh = ss.insertSheet(AT_SESSION_SHEET_V1111);
+    sh.getRange(1,1,1,5).setValues([['SHEET','BARIS','SESI','SUMBER','WAKTU CATAT']]);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+function atRecordSessionV1111_(sheetName,rowNumber,source,sessionId) {
+  const sh = atSessionSheetV1111_();
+  sh.appendRow([sheetName,rowNumber,String(sessionId||Utilities.getUuid()),source,new Date()]);
+}
+function atReadSessionsV1111_() {
+  const sh = getSpreadsheet_().getSheetByName(AT_SESSION_SHEET_V1111);
+  const map = {};
+  if (!sh || sh.getLastRow()<2) return map;
+  sh.getRange(2,1,sh.getLastRow()-1,4).getValues().forEach(function(r){
+    map[String(r[0])+'|'+String(r[1])] = {session:String(r[2]),source:String(r[3])};
+  });
+  return map;
+}
+function atGroupNewSessionRowsV1111_(rows) {
+  const grouped=[], byKey={};
+  rows.forEach(function(r){
+    if (!r._atSession) { grouped.push(r); return; }
+    const key = [r._atSession,r.tanggal,r._atSource||r.sumber,r.jenis].join('|');
+    if (!byKey[key]) {
+      const item=Object.assign({},r);
+      item.keterangan=String(r._atSource||r.sumber);
+      byKey[key]=item; grouped.push(item);
+    } else {
+      byKey[key].uangMasuk += number_(r.uangMasuk);
+      byKey[key].uangKeluar += number_(r.uangKeluar);
+    }
+  });
+  return grouped;
+}
+
 function simpanDataSayur(payload) {
   validateTransaction_(payload);
   const sheet = getOrCreateTransactionSheet_(payload.targetSheet);
@@ -519,6 +563,9 @@ function simpanDataSayur(payload) {
     no, tanggal, payload.sayur.trim(), jumlah, payload.satuan.trim(),
     hargaBeli, php, total, laba, number_(payload.dpAmount), normalizeStatus_(payload.status)
   ]);
+  // Catat hanya transaksi baru; bila gagal, transaksi tetap tersimpan normal.
+  try { atRecordSessionV1111_(sheet.getName(),sheet.getLastRow(),sheet.getName(),payload.sessionId); }
+  catch(e) { console.log('Metadata sesi AT FARM:',e); }
 
   ensureProductInData_(payload.sayur.trim(), payload.satuan.trim(), php);
   formatTransactionSheet_(sheet);
@@ -1019,7 +1066,9 @@ function saveCashierTransaction(payload){
   let allocated=0;
   const rows=items.map((it,idx)=>{const qty=number_(it.qty),price=number_(it.price),grossSub=qty*price;let share=idx===items.length-1?discount-allocated:(gross?discount*(grossSub/gross):0);allocated+=share;const netSub=Math.max(0,grossSub-share);return [id,now,Utilities.formatDate(now,Session.getScriptTimeZone(),'HH:mm:ss'),String(it.name||''),qty,String(it.unit||''),price,netSub,status,0,member,share];});
   const dibayar=status==='LUNAS'?total:(status==='DP'?Math.min(total,Math.max(0,paid)):0);
-  rows.forEach(r=>r[9]=dibayar); sh.getRange(sh.getLastRow()+1,1,rows.length,CASHIER_TX_HEADERS.length).setValues(rows); sh.getRange(2,2,sh.getLastRow()-1,1).setNumberFormat('dd/MM/yyyy');
+  rows.forEach(r=>r[9]=dibayar); const atStartRow=sh.getLastRow()+1; sh.getRange(atStartRow,1,rows.length,CASHIER_TX_HEADERS.length).setValues(rows); sh.getRange(2,2,sh.getLastRow()-1,1).setNumberFormat('dd/MM/yyyy');
+  try { for(let k=0;k<rows.length;k++) atRecordSessionV1111_(sh.getName(),atStartRow+k,'KASIR',id); }
+  catch(e) { console.log('Metadata sesi kasir:',e); }
   // V10.89: kasir ikut otomatis masuk REKAP_KEUANGAN.
   try { syncRekapKeuangan_(); } catch (e) { console.log('Sync REKAP_KEUANGAN:', e); }
   return {success:true,message:'Transaksi kasir berhasil disimpan.',id:id,total:total,discount:discount,member:member};
@@ -1199,6 +1248,8 @@ function saveExpense(data){
   if(map.tanggal<0||map.keterangan<0||map.nominal<0){
     throw new Error('Header sheet PENGELUARAN tidak dikenali. Gunakan header: ID, Tanggal, Keterangan, Nominal, Catatan, Waktu Input. Data lama tidak dihapus.');
   } else sh.appendRow(row);
+  try { atRecordSessionV1111_(sh.getName(),sh.getLastRow(),'PENGELUARAN',id); }
+  catch(e) { console.log('Metadata sesi pengeluaran:',e); }
   // V10.89: pengeluaran langsung tercatat pada REKAP_KEUANGAN.
   try { syncRekapKeuangan_(); } catch (e) { console.log('Sync REKAP_KEUANGAN:', e); }
   return {success:true,message:'Pengeluaran berhasil disimpan.',data:getExpenseData('','')};
@@ -1870,6 +1921,21 @@ function getRekapKeuanganSimple(startDate, endDate) {
 // Menggabungkan transaksi uang masuk dari semua lokasi + kasir
 // dan uang keluar dari PENGELUARAN menjadi buku kas kronologis.
 // ============================================================
+// V11.12: label asal transaksi hanya untuk tampilan Total Keuangan.
+// Data asli dan keterangan historis pada Spreadsheet tetap utuh.
+function atFinanceCategoryV1112_(r) {
+  const source=String(r.sumber||'').toUpperCase();
+  const origin=String(r._atSource||'').toUpperCase();
+  const detail=String(r.keterangan||'').toUpperCase();
+  if (source==='PENGELUARAN' || number_(r.uangKeluar)>0) return 'TRANSAKSI PENGELUARAN';
+  if (source==='KASIR') return 'KASIR';
+  if (source==='UANG_MASUK' || r._atFinanceManual) {
+    return /TRANSFER\s*BARANG/.test(source+' '+detail) ? 'TRANSFER BARANG' : 'UANG MASUK';
+  }
+  if (/TRANSFER\s*BARANG/.test(origin+' '+source)) return 'TRANSFER BARANG';
+  return 'FORM PENJUALAN PONDOK';
+}
+
 function getTotalKeuangan(startDate, endDate) {
   // V10.92: TOTAL KEUANGAN TANPA REKAP_KEUANGAN.
   // Uang masuk dibaca langsung dari semua sheet transaksi lokasi + KASIR_TRANSAKSI.
@@ -1879,6 +1945,7 @@ function getTotalKeuangan(startDate, endDate) {
   const awal = startDate ? startOfDay_(parseDateInput(startDate)) : null;
   const akhir = endDate ? endOfDay_(parseDateInput(endDate)) : null;
   const rows = [];
+  const atSessionsV1111 = atReadSessionsV1111_();
   let totalIncome = 0, totalExpense = 0, totalOmzet = 0, totalReceivable = 0, totalProfit = 0;
 
   function inRange_(d) {
@@ -1921,6 +1988,8 @@ function getTotalKeuangan(startDate, endDate) {
       rows.push({
         _time: d ? d.getTime() : 0,
         _order: i + 2,
+        _atSession: (atSessionsV1111[name+'|'+(i+2)]||{}).session || '',
+        _atSource: (atSessionsV1111[name+'|'+(i+2)]||{}).source || name,
         tanggal: dateText_(d, r[1]),
         jenis: masuk > 0 ? 'UANG MASUK' : 'PIUTANG',
         sumber: name,
@@ -1956,6 +2025,7 @@ function getTotalKeuangan(startDate, endDate) {
       totalReceivable += Math.max(0, omzet - masuk);
       rows.push({
         _time:t.d.getTime(), _order:t.order,
+        _atSession:(atSessionsV1111[CONFIG.CASHIER_TX_SHEET+'|'+t.order]||{}).session||'', _atSource:'KASIR',
         tanggal:dateText_(t.d,''), jenis:masuk > 0 ? 'UANG MASUK' : 'PIUTANG',
         sumber:'KASIR',
         keterangan:(t.items.length ? t.items.join(', ') : 'Penjualan Kasir') + (t.status ? ' - ' + t.status : ''),
@@ -1974,6 +2044,7 @@ function getTotalKeuangan(startDate, endDate) {
     const d = x.dateInput ? parseDateInput(x.dateInput) : parseDateValue_(x.tanggal);
     rows.push({
       _time:d ? d.getTime() : 0, _order:1000000 + i,
+      _atSession:(atSessionsV1111['PENGELUARAN|'+x.rowNumber]||{}).session||'', _atSource:'PENGELUARAN',
       tanggal:x.tanggal || dateText_(d,''), jenis:'UANG KELUAR', sumber:'PENGELUARAN',
       keterangan:String(x.keterangan || x.catatan || 'Pengeluaran'),
       uangMasuk:0, uangKeluar:keluar, saldo:0
@@ -1984,20 +2055,25 @@ function getTotalKeuangan(startDate, endDate) {
   getManualIncomeData(startDate,endDate).forEach(function(x,i){
     const d=parseDateInput(x.dateInput);totalIncome+=number_(x.nominal);
     rows.push({_time:d.getTime(),_order:2000000+i,tanggal:x.tanggal,jenis:'UANG MASUK',
-      sumber:x.sumber,keterangan:x.keterangan,uangMasuk:number_(x.nominal),uangKeluar:0,saldo:0});
+      _atSession:(atSessionsV1111[MANUAL_INCOME_SHEET+'|'+x.rowNumber]||{}).session||'', _atSource:x.sumber,
+      sumber:x.sumber,_atFinanceManual:true,keterangan:x.keterangan,uangMasuk:number_(x.nominal),uangKeluar:0,saldo:0});
   });
   // Kronologis lama -> baru supaya saldo berjalan benar.
   rows.sort(function(a,b){ return (a._time-b._time) || (a._order-b._order); });
+  // Hanya baris dengan metadata V11.11 yang digabung. Riwayat lama tetap per baris.
+  const displayRows = atGroupNewSessionRowsV1111_(rows);
   let saldo = 0;
-  rows.forEach(function(r) {
+  displayRows.forEach(function(r) {
     saldo += number_(r.uangMasuk) - number_(r.uangKeluar);
     r.saldo = saldo;
-    delete r._time; delete r._order;
+    r.keterangan = atFinanceCategoryV1112_(r);
+    delete r._time; delete r._order; delete r._atSession; delete r._atSource;
+    delete r._atFinanceManual;
   });
 
   return {
     success:true,
-    rows:rows,
+    rows:displayRows,
     totalIncome:totalIncome,
     totalExpense:totalExpense,
     balance:totalIncome-totalExpense,
@@ -2019,7 +2095,7 @@ function saveManualIncome(p){
  p=p||{};const d=parseDateInput(p.tanggal),src=String(p.sumber||'').trim(),note=String(p.keterangan||'').trim(),n=number_(p.nominal);
  if(!d||isNaN(d.getTime())||!src||!note||!isFinite(n)||n<=0)throw new Error('Tanggal, sumber, keterangan, dan nominal positif wajib diisi.');
  const lock=LockService.getScriptLock();lock.waitLock(20000);
- try{manualIncomeSheet_().appendRow(['IN-'+Utilities.getUuid(),d,src,note,n,new Date()]);}
+ try{const sh=manualIncomeSheet_();sh.appendRow(['IN-'+Utilities.getUuid(),d,src,note,n,new Date()]);try{atRecordSessionV1111_(sh.getName(),sh.getLastRow(),src);}catch(e){console.log('Metadata sesi uang masuk:',e);}}
  finally{lock.releaseLock();}
  return {success:true,message:'Uang masuk berhasil disimpan.'};
 }
@@ -2027,8 +2103,8 @@ function getManualIncomeData(startDate,endDate){
  const sh=manualIncomeSheet_();if(sh.getLastRow()<2)return [];
  const a=startDate?startOfDay_(parseDateInput(startDate)):null,b=endDate?endOfDay_(parseDateInput(endDate)):null;
  const tz=Session.getScriptTimeZone()||'Asia/Jakarta';
- return sh.getRange(2,1,sh.getLastRow()-1,6).getValues().map(r=>{
+ return sh.getRange(2,1,sh.getLastRow()-1,6).getValues().map((r,idx)=>{
   const d=parseDateValue_(r[1]);if(!d||(a&&d<a)||(b&&d>b))return null;
-  return {tanggal:Utilities.formatDate(d,tz,'dd/MM/yyyy'),dateInput:Utilities.formatDate(d,tz,'yyyy-MM-dd'),sumber:String(r[2]||''),keterangan:String(r[3]||''),nominal:number_(r[4])};
+  return {rowNumber:idx+2,tanggal:Utilities.formatDate(d,tz,'dd/MM/yyyy'),dateInput:Utilities.formatDate(d,tz,'yyyy-MM-dd'),sumber:String(r[2]||''),keterangan:String(r[3]||''),nominal:number_(r[4])};
  }).filter(Boolean);
 }
